@@ -2,7 +2,7 @@ import contextlib
 import re
 import shlex
 from itertools import chain
-from typing import Tuple, Union, cast
+from typing import Tuple, Union, cast, Optional, Awaitable, Callable
 
 from nonebot.adapters import MessageSegment
 from nonebot.adapters.mirai2 import Bot as Mirai_Bot
@@ -159,6 +159,7 @@ async def get_bili_number(state: T_State):
         logger.info(f"{bililink} is not video or column")
         raise FinishedException
 
+check_is_enabled: Optional[Callable[[MESSAGE_EVENT, BOT], Awaitable[bool]]] = None # 外部权限检查函数
 
 @bilichat.handle()
 async def video_info(
@@ -168,6 +169,9 @@ async def video_info(
     matcher: Matcher,
     options: Options = Depends(get_args),
 ):
+    if not (check_is_enabled and await check_is_enabled(event, bot)):
+        return
+
     # sourcery skip: raise-from-previous-error, use-fstring-for-concatenation
     DISABLE_REPLY = isinstance(bot, Mirai_Bot)  # 部分平台Reply暂不可用
     DISABLE_LINK = isinstance(bot, QG_Bot) or not plugin_config.bilichat_basic_info_url  # 部分平台发送链接都要审核
